@@ -1,0 +1,37 @@
+name: Move Issue to In Review on PR from Issue's Branch
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  move_issue_to_in_review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check if PR is opened or synchronized
+        id: check_pr
+        run: |
+          echo "PR Action: ${{ github.event.action }}"
+          if [ "${{ github.event.action }}" == "opened" ] || [ "${{ github.event.action }}" == "synchronize" ]; then
+            echo "::set-output name=move_issue::true"
+          else
+            echo "::set-output name=move_issue::false"
+          fi
+
+      - name: Get the issue's branch name
+        id: get_issue_branch
+        run: |
+          issue_number=$(echo "${{ github.event.pull_request.body }}" | grep -oP '(?<=#)\d+')
+          branch_name=$(gh api --jq '.issue[].pull_request.head.ref' repos/$GITHUB_REPOSITORY/pulls/$issue_number)
+          echo "::set-output name=issue_branch::$branch_name"
+
+      - name: Move Issue to In Review on Issue's Branch
+        if: steps.check_pr.outputs.move_issue == 'true'
+        run: |
+          issue_branch=$(echo "${{ steps.get_issue_branch.outputs.issue_branch }}")
+          # Move the issue to the "In Review" column (or add a label)
+          # Replace '123' with the actual issue number and 'In Review' with the column/label name.
+          gh issue update 123 --add-label "In Review" --add-label "$issue_branch"
